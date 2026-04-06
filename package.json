@@ -1,0 +1,19 @@
+{
+  "name": "nidorali",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "dev:simulation": "turbo run dev --parallel --filter=@nidorali/api --filter=@nidorali/dashboard --filter=@nidorali/build-service",
+    "lint": "turbo run lint",
+    "simulation:mobile": "pnpm --filter @nidorali/mobile dev",
+    "simulation:setup": "powershell -File ./scripts/setup-local-simulation.ps1",
+    "simulation:smoke": "powershell -File ./scripts/test-local-simulation.ps1",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.8"
+  }
+}

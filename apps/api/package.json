@@ -1,0 +1,37 @@
+{
+  "name": "@nidorali/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsup src/server.ts src/app.ts --format esm --dts --clean",
+    "dev": "tsx watch src/server.ts",
+    "lint": "eslint . --config ../../packages/config/eslint/base.mjs --max-warnings=0",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "@fastify/jwt": "^9.1.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@nidorali/config": "workspace:*",
+    "@nidorali/types": "workspace:*",
+    "@supabase/supabase-js": "^2.49.1",
+    "bcryptjs": "^3.0.2",
+    "expo-server-sdk": "^4.0.0",
+    "fastify": "^5.2.1",
+    "fastify-plugin": "^5.0.1",
+    "pino": "^9.6.0",
+    "stripe": "^18.0.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.13.10",
+    "eslint": "^9.22.0",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  }
+}
