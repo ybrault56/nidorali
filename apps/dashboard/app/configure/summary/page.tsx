@@ -1,8 +1,8 @@
-import { SummaryStep } from "../../../components/wizard/SummaryStep";
+﻿import { QuoteStep } from "../../../components/wizard/QuoteStep";
 
 /**
- * Étape récapitulatif.
+ * Étape aperçu et proposition tarifaire.
  */
 export default function SummaryPage() {
-  return <SummaryStep />;
+  return <QuoteStep />;
 }

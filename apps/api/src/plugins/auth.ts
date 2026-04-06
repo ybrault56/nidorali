@@ -88,6 +88,36 @@ export const authPlugin = fp(async (fastify) => {
     }
   });
 
+  fastify.decorate("authenticateCustomer", async (request) => {
+    try {
+      const payload = await request.jwtVerify<{ accountId: string; email: string; scope: "customer" }>();
+      if (payload.scope !== "customer") {
+        throw new AppError({
+          code: "customer_invalid_scope",
+          message: "Session client invalide.",
+          statusCode: 401,
+        });
+      }
+
+      request.customerUser = {
+        accountId: payload.accountId,
+        email: payload.email,
+        scope: "customer",
+      };
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      throw new AppError({
+        code: "customer_invalid_token",
+        details: error,
+        message: "Session client invalide.",
+        statusCode: 401,
+      });
+    }
+  });
+
   fastify.decorate("resolveTenant", async (request) => {
     const tenantIdentifier = request.headers["x-tenant-id"];
     if (typeof tenantIdentifier !== "string" || tenantIdentifier.length === 0) {

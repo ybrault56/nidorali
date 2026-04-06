@@ -4,6 +4,8 @@ import type {
   BuildJobPlatform,
   BuildJobStatus,
   Conversation,
+  CustomerAccount,
+  CustomerOrderSummary,
   DocumentRecord,
   EventAttendee,
   EventAttendeeStatus,
@@ -25,6 +27,12 @@ export interface RegisterUserInput {
   email: string;
   password_hash: string;
   role?: AppUser["role"];
+}
+
+export interface CreateCustomerAccountInput {
+  display_name?: string;
+  email: string;
+  password_hash: string;
 }
 
 export interface UpdateUserInput {
@@ -97,18 +105,21 @@ export interface UpdateBuildJobInput {
 export interface DataRepository {
   createBuildJob(input: CreateBuildJobInput): Promise<BuildJob>;
   createConversation(tenantId: string, input: CreateConversationInput): Promise<Conversation>;
+  createCustomerAccount(input: CreateCustomerAccountInput): Promise<CustomerAccount>;
   createDocument(tenantId: string, input: CreateDocumentInput): Promise<DocumentRecord>;
   createEvent(tenantId: string, input: CreateEventInput): Promise<EventRecord>;
   createFormResponse(tenantId: string, formId: string, userId: string | null, answers: Record<string, unknown>): Promise<FormResponse>;
   createMessage(tenantId: string, conversationId: string, input: CreateMessageInput): Promise<Message>;
   createNews(tenantId: string, input: CreateNewsInput): Promise<NewsPost>;
   createNotification(tenantId: string, createdBy: string, payload: PushNotificationPayload): Promise<PushNotificationRecord>;
-  createTenantFromCheckout(payload: StripeCheckoutPayload): Promise<TenantBundle>;
+  createTenantFromCheckout(payload: StripeCheckoutPayload, customerAccountId?: string): Promise<TenantBundle>;
   deleteDocument(tenantId: string, id: string): Promise<void>;
   deleteEvent(tenantId: string, id: string): Promise<void>;
   deleteNews(tenantId: string, id: string): Promise<void>;
   getBuildJob(id: string): Promise<BuildJob | null>;
   getConfigByTenantIdentifier(identifier: string): Promise<TenantBundle | null>;
+  getCustomerAccountByEmail(email: string): Promise<CustomerAccount | null>;
+  getCustomerAccountById(id: string): Promise<CustomerAccount | null>;
   getEvent(tenantId: string, id: string): Promise<EventRecord | null>;
   getForm(tenantId: string, id: string): Promise<FormRecord | null>;
   getNews(tenantId: string, id: string): Promise<NewsPost | null>;
@@ -118,6 +129,7 @@ export interface DataRepository {
   getUserById(tenantId: string, userId: string): Promise<AppUser | null>;
   listBuildJobs(tenantId?: string): Promise<BuildJob[]>;
   listConversations(tenantId: string, userId: string): Promise<Conversation[]>;
+  listCustomerOrders(accountId: string): Promise<CustomerOrderSummary[]>;
   listDocuments(tenantId: string): Promise<DocumentRecord[]>;
   listEvents(tenantId: string): Promise<EventRecord[]>;
   listForms(tenantId: string): Promise<FormRecord[]>;
@@ -125,6 +137,7 @@ export interface DataRepository {
   listMessages(tenantId: string, conversationId: string): Promise<Message[]>;
   listNews(tenantId: string): Promise<NewsPost[]>;
   listTenants(): Promise<TenantBundle[]>;
+  linkCustomerAccountToTenant(accountId: string, tenantId: string): Promise<void>;
   registerUser(tenantId: string, input: RegisterUserInput): Promise<AppUser>;
   setEventAttendance(tenantId: string, eventId: string, userId: string, status: EventAttendeeStatus): Promise<EventAttendee>;
   updateBuildJob(id: string, patch: UpdateBuildJobInput): Promise<BuildJob>;
@@ -140,6 +153,8 @@ export interface InMemorySeed {
   configs?: TenantConfig[];
   conversations?: Conversation[];
   conversationMembers?: Array<{ conversation_id: string; user_id: string }>;
+  customerAccounts?: CustomerAccount[];
+  customerTenantLinks?: Array<{ account_id: string; tenant_id: string }>;
   documents?: DocumentRecord[];
   events?: EventRecord[];
   forms?: FormRecord[];

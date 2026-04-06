@@ -3,6 +3,8 @@ import type {
   AppUser,
   BuildJob,
   Conversation,
+  CustomerAccount,
+  CustomerOrderSummary,
   DocumentRecord,
   EventAttendee,
   EventRecord,
@@ -91,6 +93,26 @@ export function createSupabaseRepository(env: ApiEnv, existingClient?: SupabaseC
       config: await getConfigForTenant(tenant.id),
     } satisfies TenantBundle;
   };
+  const getLatestBuildForTenant = async (tenantId: string) => {
+    const { data, error } = await supabase
+      .from("build_jobs")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new AppError({
+        code: "build_job_fetch_failed",
+        details: error.message,
+        message: "Lecture du build impossible.",
+        statusCode: 500,
+      });
+    }
+
+    return (data as BuildJob | null) ?? null;
+  };
 
   return {
     async createBuildJob(input) {
@@ -119,6 +141,19 @@ export function createSupabaseRepository(env: ApiEnv, existingClient?: SupabaseC
         );
       }
       return conversation;
+    },
+    async createCustomerAccount(input) {
+      const { data, error } = await supabase
+        .from("customer_accounts")
+        .insert({
+          display_name: input.display_name ?? null,
+          email: input.email,
+          password_hash: input.password_hash,
+        })
+        .select("*")
+        .single();
+
+      return unwrap(data as CustomerAccount | null, error, "customer_account_create_failed", "Compte client introuvable.");
     },
     async createDocument(tenantId, input) {
       const { data, error } = await supabase.from("documents").insert({ ...input, tenant_id: tenantId }).select("*").single();
@@ -172,7 +207,7 @@ export function createSupabaseRepository(env: ApiEnv, existingClient?: SupabaseC
         .single();
       return unwrap(data as PushNotificationRecord | null, error, "notification_create_failed", "Notification introuvable.");
     },
-    async createTenantFromCheckout(payload) {
+    async createTenantFromCheckout(payload, customerAccountId) {
       const { data: tenantData, error: tenantError } = await supabase
         .from("tenants")
         .insert({
@@ -193,6 +228,22 @@ export function createSupabaseRepository(env: ApiEnv, existingClient?: SupabaseC
         .select("*")
         .single();
       const config = unwrap(configData as TenantConfig | null, configError, "tenant_config_create_failed", "Configuration introuvable.");
+
+      if (customerAccountId) {
+        const { error: linkError } = await supabase.from("customer_account_tenants").insert({
+          account_id: customerAccountId,
+          tenant_id: tenant.id,
+        });
+
+        if (linkError) {
+          throw new AppError({
+            code: "customer_tenant_link_failed",
+            details: linkError.message,
+            message: "Rattachement du compte client impossible.",
+            statusCode: 500,
+          });
+        }
+      }
 
       return {
         ...tenant,
@@ -246,6 +297,30 @@ export function createSupabaseRepository(env: ApiEnv, existingClient?: SupabaseC
     },
     async getConfigByTenantIdentifier(identifier) {
       return getTenantBundle(identifier);
+    },
+    async getCustomerAccountByEmail(email) {
+      const { data, error } = await supabase.from("customer_accounts").select("*").eq("email", email).maybeSingle();
+      if (error) {
+        throw new AppError({
+          code: "customer_account_fetch_failed",
+          details: error.message,
+          message: "Lecture du compte client impossible.",
+          statusCode: 500,
+        });
+      }
+      return (data as CustomerAccount | null) ?? null;
+    },
+    async getCustomerAccountById(id) {
+      const { data, error } = await supabase.from("customer_accounts").select("*").eq("id", id).maybeSingle();
+      if (error) {
+        throw new AppError({
+          code: "customer_account_fetch_failed",
+          details: error.message,
+          message: "Lecture du compte client impossible.",
+          statusCode: 500,
+        });
+      }
+      return (data as CustomerAccount | null) ?? null;
     },
     async getEvent(tenantId, id) {
       const { data, error } = await supabase.from("events").select("*").eq("tenant_id", tenantId).eq("id", id).maybeSingle();
@@ -325,6 +400,29 @@ export function createSupabaseRepository(env: ApiEnv, existingClient?: SupabaseC
       const { data, error } = await supabase.from("conversations").select("*").eq("tenant_id", tenantId).order("created_at", { ascending: false });
       return unwrap((data as Conversation[] | null) ?? [], error, "conversations_list_failed", "Aucune conversation.");
     },
+    async listCustomerOrders(accountId) {
+      const { data, error } = await supabase
+        .from("customer_account_tenants")
+        .select("tenant_id")
+        .eq("account_id", accountId);
+
+      const links = unwrap(
+        (data as Array<{ tenant_id: string }> | null) ?? [],
+        error,
+        "customer_orders_list_failed",
+        "Aucune commande.",
+      );
+
+      const tenantBundles = await Promise.all(links.map(async ({ tenant_id: tenantId }) => getTenantBundle(tenantId)));
+      const validBundles = tenantBundles.filter((tenant): tenant is TenantBundle => tenant !== null);
+
+      return Promise.all(
+        validBundles.map(async (tenant): Promise<CustomerOrderSummary> => ({
+          latest_build: await getLatestBuildForTenant(tenant.id),
+          tenant,
+        })),
+      );
+    },
     async listDocuments(tenantId) {
       const { data, error } = await supabase.from("documents").select("*").eq("tenant_id", tenantId).order("created_at", { ascending: false });
       return unwrap((data as DocumentRecord[] | null) ?? [], error, "documents_list_failed", "Aucun document.");
@@ -358,6 +456,21 @@ export function createSupabaseRepository(env: ApiEnv, existingClient?: SupabaseC
       const { data, error } = await supabase.from("tenants").select("*").order("created_at", { ascending: false });
       const tenants = unwrap((data as Tenant[] | null) ?? [], error, "tenants_list_failed", "Aucun tenant.");
       return Promise.all(tenants.map(async (tenant) => ({ ...tenant, config: await getConfigForTenant(tenant.id) })));
+    },
+    async linkCustomerAccountToTenant(accountId, tenantId) {
+      const { error } = await supabase.from("customer_account_tenants").upsert(
+        { account_id: accountId, tenant_id: tenantId },
+        { onConflict: "account_id,tenant_id" },
+      );
+
+      if (error) {
+        throw new AppError({
+          code: "customer_tenant_link_failed",
+          details: error.message,
+          message: "Rattachement du compte client impossible.",
+          statusCode: 500,
+        });
+      }
     },
     async registerUser(tenantId, input) {
       const { data, error } = await supabase

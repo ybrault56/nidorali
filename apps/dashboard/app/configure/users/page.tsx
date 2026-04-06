@@ -1,8 +1,8 @@
-import { UsersStep } from "../../../components/wizard/UsersStep";
+﻿import { IdentityStep } from "../../../components/wizard/IdentityStep";
 
 /**
- * Étape utilisateurs.
+ * Étape identité.
  */
 export default function UsersPage() {
-  return <UsersStep />;
+  return <IdentityStep />;
 }

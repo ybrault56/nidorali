@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 $apiBaseUrl = "http://localhost:3001"
 $buildServiceUrl = "http://localhost:3002"
@@ -8,6 +8,7 @@ $timestamp = Get-Date -Format "yyyyMMddHHmmss"
 $checkoutSlug = "simulation-$timestamp"
 $bundleId = "com.nidorali.simulation$timestamp"
 $memberEmail = "member+$timestamp@demo.test"
+$customerEmail = "customer+$timestamp@demo.test"
 
 function Invoke-NidoraliJson {
   param(
@@ -81,10 +82,18 @@ Invoke-NidoraliJson -Method GET -Uri "$apiBaseUrl/api/members" -Headers @{
   "x-tenant-id"   = $tenantSlug
 } | Out-Null
 
-Write-Host "4. Déclenchement du faux checkout..."
+Write-Host "4. Création du compte client..."
+$customerRegisterResponse = Invoke-NidoraliJson -Method POST -Uri "$apiBaseUrl/api/customer/register" -Body @{
+  display_name = "Client Local"
+  email        = $customerEmail
+  password     = "password123"
+}
+$customerToken = $customerRegisterResponse.data.token.accessToken
+
+Write-Host "5. Déclenchement du faux checkout..."
 $checkoutPayload = @{
   app_name      = "Simulation $timestamp"
-  billing_email = "billing+$timestamp@nidorali.local"
+  billing_email = $customerEmail
   bundle_id     = $bundleId
   plan          = "starter"
   slug          = $checkoutSlug
@@ -105,16 +114,25 @@ $checkoutPayload = @{
     splash_bg_color      = "#FFFFFF"
   }
 }
-$checkoutResponse = Invoke-NidoraliJson -Method POST -Uri "$apiBaseUrl/api/billing/checkout-session" -Body $checkoutPayload
+$checkoutResponse = Invoke-NidoraliJson -Method POST -Uri "$apiBaseUrl/api/billing/checkout-session" -Headers @{
+  "authorization" = "Bearer $customerToken"
+} -Body $checkoutPayload
 
-Write-Host "5. Vérification du back-office admin..."
+Write-Host "6. Vérification du back-office admin..."
 $tenantsResponse = Invoke-NidoraliJson -Method GET -Uri "$apiBaseUrl/api/admin/tenants" -Headers @{ "authorization" = "Bearer $adminToken" }
 $createdTenant = $tenantsResponse.data | Where-Object { $_.slug -eq $checkoutSlug } | Select-Object -First 1
 if (-not $createdTenant) {
   throw "Le tenant simulé n'a pas été créé."
 }
 
-Write-Host "6. Attente de la fin du build simulé..."
+Write-Host "7. Vérification du portail client..."
+$ordersResponse = Invoke-NidoraliJson -Method GET -Uri "$apiBaseUrl/api/customer/orders" -Headers @{ "authorization" = "Bearer $customerToken" }
+$clientOrder = $ordersResponse.data | Where-Object { $_.tenant.slug -eq $checkoutSlug } | Select-Object -First 1
+if (-not $clientOrder) {
+  throw "La commande n'est pas visible dans le portail client."
+}
+
+Write-Host "8. Attente de la fin du build simulé..."
 $tenantDetail = $null
 for ($attempt = 0; $attempt -lt 10; $attempt++) {
   Start-Sleep -Seconds 1

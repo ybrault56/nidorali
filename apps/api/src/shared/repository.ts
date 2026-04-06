@@ -1,6 +1,7 @@
 import type { TenantConfig } from "@nidorali/types";
 
 export type {
+  CreateCustomerAccountInput,
   CreateBuildJobInput,
   CreateConversationInput,
   CreateDocumentInput,

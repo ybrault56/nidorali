@@ -1,20 +1,21 @@
 "use client";
 
+import { cn } from "@nidorali/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { cn } from "@nidorali/ui";
-
 const steps = [
-  { href: "/configure/branding", label: "Branding" },
-  { href: "/configure/modules", label: "Modules" },
-  { href: "/configure/users", label: "Utilisateurs" },
-  { href: "/configure/summary", label: "Récapitulatif" },
-  { href: "/configure/payment", label: "Paiement" },
+  { href: "/configure/branding", label: "Organisation" },
+  { href: "/configure/modules", label: "Fonctionnalités" },
+  { href: "/configure/users", label: "Identité" },
+  { href: "/configure/summary", label: "Aperçu" },
+  { href: "/configure/payment", label: "Commande" },
 ];
 
 /**
- * Navigation du wizard multi-étapes.
+ * Navigation du tunnel de commande multi-étapes.
+ *
+ * @returns Barre d'avancement cliquable du configurateur
  */
 export function WizardNav() {
   const pathname = usePathname();
@@ -40,7 +41,9 @@ export function WizardNav() {
             key={step.href}
           >
             <span className="flex items-center justify-between gap-3">
-              <span>{index + 1}. {step.label}</span>
+              <span>
+                {index + 1}. {step.label}
+              </span>
               {completed ? <span aria-hidden="true">✓</span> : null}
             </span>
           </Link>

@@ -4,6 +4,10 @@ import { calculateMonthlyPrice, type ModuleFlags, type StripeCheckoutPayload, ty
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { generateBundleId, generateTenantSlug, resolveGeneratedFont } from "../lib/naming";
+
+export type OrganizationType = "association" | "autre" | "collectivite" | "entreprise";
+
 export interface ConfiguratorState extends ModuleFlags {
   app_name: string;
   billing_email: string;
@@ -11,6 +15,7 @@ export interface ConfiguratorState extends ModuleFlags {
   font: string;
   logo_url: string | null;
   max_users: number;
+  organization_type: OrganizationType;
   plan: TenantPlan;
   primary_color: string;
   secondary_color: string;
@@ -22,23 +27,37 @@ interface ConfiguratorStore extends ConfiguratorState {
   getMonthlyPrice: () => number;
   getPayload: () => StripeCheckoutPayload;
   reset: () => void;
-  setBranding: (patch: Partial<Pick<ConfiguratorState, "app_name" | "billing_email" | "bundle_id" | "font" | "logo_url" | "primary_color" | "secondary_color" | "slug" | "splash_bg_color">>) => void;
+  setBranding: (patch: Partial<Pick<ConfiguratorState, "app_name" | "logo_url" | "primary_color" | "secondary_color" | "splash_bg_color">>) => void;
   setModules: (patch: Partial<ModuleFlags>) => void;
+  setOrganization: (patch: Partial<Pick<ConfiguratorState, "billing_email" | "organization_type">>) => void;
   setPlan: (plan: TenantPlan) => void;
   setUsers: (maxUsers: number) => void;
+}
+
+/**
+ * Applique la nomenclature automatique dérivée du nom d'application.
+ *
+ * @param appName - Nom fonctionnel saisi dans le tunnel
+ * @returns Slug, bundle et police générés
+ */
+function buildComputedNaming(appName: string) {
+  return {
+    bundle_id: generateBundleId(appName),
+    font: resolveGeneratedFont(),
+    slug: generateTenantSlug(appName),
+  };
 }
 
 const initialState: ConfiguratorState = {
   app_name: "Mon app",
   billing_email: "contact@example.com",
-  bundle_id: "com.nidorali.demo",
-  font: "Inter",
+  ...buildComputedNaming("Mon app"),
   logo_url: null,
   max_users: 100,
+  organization_type: "entreprise",
   plan: "starter",
   primary_color: "#0F62FE",
   secondary_color: "#A7D8FF",
-  slug: "mon-app",
   splash_bg_color: "#FFFFFF",
   module_documents: false,
   module_forms: false,
@@ -85,8 +104,17 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         };
       },
       reset: () => set(initialState),
-      setBranding: (patch) => set((state) => ({ ...state, ...patch })),
+      setBranding: (patch) =>
+        set((state) => {
+          const nextAppName = patch.app_name ?? state.app_name;
+          return {
+            ...state,
+            ...patch,
+            ...buildComputedNaming(nextAppName),
+          };
+        }),
       setModules: (patch) => set((state) => ({ ...state, ...patch })),
+      setOrganization: (patch) => set((state) => ({ ...state, ...patch })),
       setPlan: (plan) => set({ plan }),
       setUsers: (max_users) => set({ max_users }),
     }),
@@ -99,6 +127,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         font: state.font,
         logo_url: state.logo_url,
         max_users: state.max_users,
+        organization_type: state.organization_type,
         plan: state.plan,
         primary_color: state.primary_color,
         secondary_color: state.secondary_color,

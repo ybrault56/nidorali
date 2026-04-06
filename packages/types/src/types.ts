@@ -60,6 +60,15 @@ export interface TenantBundle extends Tenant {
   config: TenantConfig;
 }
 
+export interface CustomerAccount {
+  created_at: string;
+  display_name: string | null;
+  email: string;
+  id: string;
+  password_hash?: string;
+  updated_at: string;
+}
+
 export interface AppUser {
   avatar_url: string | null;
   created_at: string;
@@ -207,6 +216,11 @@ export interface AuthTokens {
   expiresIn: string;
 }
 
+export interface CustomerSession {
+  account: CustomerAccount;
+  token: AuthTokens;
+}
+
 export interface StripeCheckoutPayload {
   app_name: string;
   billing_email: string;
@@ -230,6 +244,11 @@ export interface StripeCheckoutPayload {
     | "secondary_color"
     | "splash_bg_color"
   >;
+}
+
+export interface CustomerOrderSummary {
+  latest_build: BuildJob | null;
+  tenant: TenantBundle;
 }
 
 export interface PaginatedMeta {

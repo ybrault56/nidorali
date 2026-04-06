@@ -1,8 +1,8 @@
-import { BrandingStep } from "../../../components/wizard/BrandingStep";
+﻿import { OrganizationStep } from "../../../components/wizard/OrganizationStep";
 
 /**
- * Étape branding.
+ * Étape organisation.
  */
 export default function BrandingPage() {
-  return <BrandingStep />;
+  return <OrganizationStep />;
 }

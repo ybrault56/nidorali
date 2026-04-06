@@ -1,8 +1,8 @@
-import { redirect } from "next/navigation";
+﻿import { LandingPage } from "../components/marketing/LandingPage";
 
 /**
- * Redirige vers le configurateur principal.
+ * Landing page publique de Nidorali.
  */
 export default function HomePage() {
-  redirect("/configure");
+  return <LandingPage />;
 }

@@ -12,6 +12,7 @@ declare module "fastify" {
   interface FastifyInstance {
     authenticateAdmin: FastifyAuthHandler;
     authenticateAppUser: FastifyAuthHandler;
+    authenticateCustomer: FastifyAuthHandler;
     dataRepository: DataRepository;
     env: ApiEnv;
     resolveTenant: FastifyAuthHandler;
@@ -30,6 +31,11 @@ declare module "fastify" {
       role: string;
       tenantId: string;
       userId: string;
+    };
+    customerUser?: {
+      accountId: string;
+      email: string;
+      scope: "customer";
     };
     tenant?: TenantBundle;
   }

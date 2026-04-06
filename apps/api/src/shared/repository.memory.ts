@@ -2,6 +2,8 @@ import type {
   AppUser,
   BuildJob,
   Conversation,
+  CustomerAccount,
+  CustomerOrderSummary,
   DocumentRecord,
   EventRecord,
   FormRecord,
@@ -26,6 +28,8 @@ interface InMemoryState {
   configs: TenantConfig[];
   conversationMembers: Array<{ conversation_id: string; user_id: string }>;
   conversations: Conversation[];
+  customerAccounts: CustomerAccount[];
+  customerTenantLinks: Array<{ account_id: string; tenant_id: string }>;
   documents: DocumentRecord[];
   events: EventRecord[];
   forms: FormRecord[];
@@ -55,6 +59,8 @@ export function createInMemoryRepository(seed: InMemorySeed = {}): DataRepositor
     configs,
     conversationMembers: seed.conversationMembers ?? [],
     conversations: seed.conversations ?? [],
+    customerAccounts: seed.customerAccounts ?? [],
+    customerTenantLinks: seed.customerTenantLinks ?? [],
     documents: seed.documents ?? [],
     events: seed.events ?? [],
     forms: seed.forms ?? [],
@@ -74,6 +80,8 @@ export function createInMemoryRepository(seed: InMemorySeed = {}): DataRepositor
       state.configs.find((config) => config.tenant_id === tenant.id) ??
       createDefaultConfig(tenant.id, now()),
   });
+  const latestBuildOf = (tenantId: string) =>
+    state.buildJobs.find((buildJob) => buildJob.tenant_id === tenantId) ?? null;
   const requireTenant = (tenantId: string) => {
     const tenant = state.tenants.find((item) => item.id === tenantId || item.slug === tenantId || item.bundle_id === tenantId);
     if (!tenant) {
@@ -125,6 +133,18 @@ export function createInMemoryRepository(seed: InMemorySeed = {}): DataRepositor
         })),
       );
       return conversation;
+    },
+    async createCustomerAccount(input) {
+      const account: CustomerAccount = {
+        created_at: now(),
+        display_name: input.display_name ?? null,
+        email: input.email,
+        id: nextId(),
+        password_hash: input.password_hash,
+        updated_at: now(),
+      };
+      state.customerAccounts.unshift(account);
+      return account;
     },
     async createDocument(tenantId, input) {
       requireTenant(tenantId);
@@ -223,7 +243,7 @@ export function createInMemoryRepository(seed: InMemorySeed = {}): DataRepositor
       state.notifications.unshift(notification);
       return notification;
     },
-    async createTenantFromCheckout(payload) {
+    async createTenantFromCheckout(payload, customerAccountId) {
       const timestamp = now();
       const tenant: Tenant = {
         app_name: payload.app_name,
@@ -260,6 +280,12 @@ export function createInMemoryRepository(seed: InMemorySeed = {}): DataRepositor
       };
       state.tenants.unshift(tenant);
       state.configs.unshift(config);
+      if (customerAccountId) {
+        state.customerTenantLinks.unshift({
+          account_id: customerAccountId,
+          tenant_id: tenant.id,
+        });
+      }
       return { ...tenant, config };
     },
     async deleteDocument(tenantId, id) {
@@ -280,6 +306,12 @@ export function createInMemoryRepository(seed: InMemorySeed = {}): DataRepositor
     async getConfigByTenantIdentifier(identifier) {
       const tenant = state.tenants.find((item) => item.slug === identifier || item.bundle_id === identifier);
       return tenant ? bundleOf(tenant) : null;
+    },
+    async getCustomerAccountByEmail(email) {
+      return state.customerAccounts.find((account) => account.email === email) ?? null;
+    },
+    async getCustomerAccountById(id) {
+      return state.customerAccounts.find((account) => account.id === id) ?? null;
     },
     async getEvent(tenantId, id) {
       requireTenant(tenantId);
@@ -323,6 +355,21 @@ export function createInMemoryRepository(seed: InMemorySeed = {}): DataRepositor
           (allowedConversationIds.size === 0 || allowedConversationIds.has(conversation.id)),
       );
     },
+    async listCustomerOrders(accountId) {
+      const linkedTenantIds = new Set(
+        state.customerTenantLinks
+          .filter((link) => link.account_id === accountId)
+          .map((link) => link.tenant_id),
+      );
+
+      return state.tenants
+        .filter((tenant) => linkedTenantIds.has(tenant.id))
+        .map<CustomerOrderSummary>((tenant) => ({
+          latest_build: latestBuildOf(tenant.id),
+          tenant: bundleOf(tenant),
+        }))
+        .sort((left, right) => right.tenant.created_at.localeCompare(left.tenant.created_at));
+    },
     async listDocuments(tenantId) {
       requireTenant(tenantId);
       return state.documents.filter((document) => document.tenant_id === tenantId);
@@ -349,6 +396,27 @@ export function createInMemoryRepository(seed: InMemorySeed = {}): DataRepositor
     },
     async listTenants() {
       return state.tenants.map(bundleOf);
+    },
+    async linkCustomerAccountToTenant(accountId, tenantId) {
+      requireTenant(tenantId);
+      const account = await this.getCustomerAccountById(accountId);
+      if (!account) {
+        throw new AppError({
+          code: "customer_account_not_found",
+          message: "Compte client introuvable.",
+          statusCode: 404,
+        });
+      }
+
+      const alreadyLinked = state.customerTenantLinks.some(
+        (link) => link.account_id === accountId && link.tenant_id === tenantId,
+      );
+      if (!alreadyLinked) {
+        state.customerTenantLinks.unshift({
+          account_id: accountId,
+          tenant_id: tenantId,
+        });
+      }
     },
     async registerUser(tenantId, input) {
       requireTenant(tenantId);

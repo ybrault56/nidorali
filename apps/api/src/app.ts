@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { registerBillingRoutes } from "./modules/billing/routes.js";
 import { registerConfigRoutes } from "./modules/config/routes.js";
+import { registerCustomerRoutes } from "./modules/customer/routes.js";
 import { registerDocumentsRoutes } from "./modules/documents/routes.js";
 import { registerFormsRoutes } from "./modules/forms/routes.js";
 import { registerMembersRoutes } from "./modules/members/routes.js";
@@ -108,6 +109,7 @@ export async function createApp(overrides: Partial<AppDependencies> = {}): Promi
   await app.register(
     async (api) => {
       await registerConfigRoutes(api);
+      await registerCustomerRoutes(api);
       await registerAuthRoutes(api);
       await registerMembersRoutes(api);
       await registerMessagingRoutes(api);

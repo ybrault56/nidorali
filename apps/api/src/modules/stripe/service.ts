@@ -13,10 +13,11 @@ export async function handleStripeEvent(fastify: FastifyInstance, event: Stripe.
     const appName = session.metadata?.app_name;
     const billingEmail = session.metadata?.billing_email;
     const bundleId = session.metadata?.bundle_id;
+    const customerAccountId = session.metadata?.customer_account_id;
     const plan = session.metadata?.plan as "starter" | "pro" | "enterprise" | undefined;
     const slug = session.metadata?.slug;
 
-    if (!tenantConfigJson || !appName || !billingEmail || !bundleId || !plan || !slug) {
+    if (!tenantConfigJson || !appName || !billingEmail || !bundleId || !customerAccountId || !plan || !slug) {
       throw new AppError({
         code: "stripe_metadata_missing",
         message: "Métadonnées Checkout incomplètes.",
@@ -24,29 +25,32 @@ export async function handleStripeEvent(fastify: FastifyInstance, event: Stripe.
       });
     }
 
-    const tenant = await fastify.dataRepository.createTenantFromCheckout({
-      app_name: appName,
-      billing_email: billingEmail,
-      bundle_id: bundleId,
-      plan,
-      slug,
-      tenant_config: JSON.parse(tenantConfigJson) as {
-        font: string;
-        logo_url: string | null;
-        max_users: number;
-        module_documents: boolean;
-        module_forms: boolean;
-        module_map: boolean;
-        module_members: boolean;
-        module_messaging: boolean;
-        module_news: boolean;
-        module_notifications: boolean;
-        module_planning: boolean;
-        primary_color: string;
-        secondary_color: string;
-        splash_bg_color: string;
+    const tenant = await fastify.dataRepository.createTenantFromCheckout(
+      {
+        app_name: appName,
+        billing_email: billingEmail,
+        bundle_id: bundleId,
+        plan,
+        slug,
+        tenant_config: JSON.parse(tenantConfigJson) as {
+          font: string;
+          logo_url: string | null;
+          max_users: number;
+          module_documents: boolean;
+          module_forms: boolean;
+          module_map: boolean;
+          module_members: boolean;
+          module_messaging: boolean;
+          module_news: boolean;
+          module_notifications: boolean;
+          module_planning: boolean;
+          primary_color: string;
+          secondary_color: string;
+          splash_bg_color: string;
+        },
       },
-    });
+      customerAccountId,
+    );
 
     const buildJob = await fastify.dataRepository.createBuildJob({
       platform: "both",

@@ -1,12 +1,13 @@
-"use client";
+﻿"use client";
 
 import { PageShell } from "@nidorali/ui";
 
+import { SiteHeader } from "../../components/marketing/SiteHeader";
+import { Logo } from "../../components/shared/Logo";
+import { ConfiguratorPreview } from "../../components/wizard/ConfiguratorPreview";
+import { WizardNav } from "../../components/wizard/WizardNav";
 import { formatPriceEur } from "../../lib/pricing";
 import { useConfiguratorStore } from "../../store/configurator";
-import { Logo } from "../../components/shared/Logo";
-import { MobilePreview } from "../../components/wizard/MobilePreview";
-import { WizardNav } from "../../components/wizard/WizardNav";
 
 /**
  * Layout partagé du configurateur.
@@ -16,6 +17,7 @@ export default function ConfigureLayout({ children }: { children: React.ReactNod
 
   return (
     <PageShell contentClassName="gap-8">
+      <SiteHeader ctaHref="/orders" ctaLabel="Suivi client" />
       <div className="flex flex-col gap-4 rounded-[2rem] border border-white/10 bg-white/5 p-5 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
           <Logo />
@@ -36,7 +38,7 @@ export default function ConfigureLayout({ children }: { children: React.ReactNod
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="order-2 lg:order-1">{children}</div>
         <div className="order-1 lg:order-2">
-          <MobilePreview />
+          <ConfiguratorPreview />
         </div>
       </div>
     </PageShell>

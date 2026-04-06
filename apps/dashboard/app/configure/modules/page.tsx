@@ -1,8 +1,8 @@
-import { ModulesStep } from "../../../components/wizard/ModulesStep";
+﻿import { FeaturesStep } from "../../../components/wizard/FeaturesStep";
 
 /**
- * Étape modules.
+ * Étape fonctionnalités.
  */
 export default function ModulesPage() {
-  return <ModulesStep />;
+  return <FeaturesStep />;
 }

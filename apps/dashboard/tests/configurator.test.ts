@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+﻿import { beforeEach, describe, expect, it } from "vitest";
 
 import { useConfiguratorStore } from "../store/configurator";
 
@@ -9,11 +9,12 @@ describe("configurator store", () => {
 
   it("builds a checkout payload aligned with the shared contract", () => {
     const store = useConfiguratorStore.getState();
+    store.setOrganization({
+      billing_email: "contact@epinal.fr",
+      organization_type: "collectivite",
+    });
     store.setBranding({
       app_name: "Mairie d'Epinal",
-      billing_email: "contact@epinal.fr",
-      bundle_id: "com.nidorali.epinal",
-      slug: "mairie-epinal",
     });
     store.setModules({
       module_news: true,
@@ -24,8 +25,8 @@ describe("configurator store", () => {
     expect(useConfiguratorStore.getState().getPayload()).toMatchObject({
       app_name: "Mairie d'Epinal",
       billing_email: "contact@epinal.fr",
-      bundle_id: "com.nidorali.epinal",
-      slug: "mairie-epinal",
+      bundle_id: "com.nidorali.mairiedepinal",
+      slug: "mairie-d-epinal",
       tenant_config: {
         max_users: 2000,
         module_news: true,

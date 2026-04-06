@@ -1,4 +1,4 @@
-import type { BuildJob, StripeCheckoutPayload, TenantBundle } from "@nidorali/types";
+import type { BuildJob, CustomerOrderSummary, CustomerSession, StripeCheckoutPayload, TenantBundle } from "@nidorali/types";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -32,10 +32,53 @@ export async function apiFetch<TData>(path: string, init?: RequestInit): Promise
  * @param payload - Configuration tenant à facturer
  * @returns URL Stripe et identifiant de session
  */
-export function createCheckoutSession(payload: StripeCheckoutPayload) {
+export function createCheckoutSession(payload: StripeCheckoutPayload, accessToken: string) {
   return apiFetch<{ checkoutSessionId: string; url: string }>("/api/billing/checkout-session", {
     body: JSON.stringify(payload),
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
     method: "POST",
+  });
+}
+
+/**
+ * Crée un compte client de suivi des commandes.
+ *
+ * @param payload - Identité et mot de passe
+ * @returns Session client persistable
+ */
+export function registerCustomerAccount(payload: { display_name?: string; email: string; password: string }) {
+  return apiFetch<CustomerSession>("/api/customer/register", {
+    body: JSON.stringify(payload),
+    method: "POST",
+  });
+}
+
+/**
+ * Ouvre une session client existante.
+ *
+ * @param payload - Identifiants du compte client
+ * @returns Session client persistable
+ */
+export function loginCustomerAccount(payload: { email: string; password: string }) {
+  return apiFetch<CustomerSession>("/api/customer/login", {
+    body: JSON.stringify(payload),
+    method: "POST",
+  });
+}
+
+/**
+ * Liste les commandes visibles par le client connecté.
+ *
+ * @param accessToken - Jeton du portail client
+ * @returns Commandes et statut associé
+ */
+export function listCustomerOrders(accessToken: string) {
+  return apiFetch<CustomerOrderSummary[]>("/api/customer/orders", {
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
   });
 }
 

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+﻿import type { SupabaseClient } from "@supabase/supabase-js";
 import type { StripeCheckoutPayload, TenantBundle } from "@nidorali/types";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -97,6 +97,7 @@ describe("api app", () => {
 
   let app: Awaited<ReturnType<typeof createApp>>;
   let authToken = "";
+  let customerToken = "";
 
   beforeAll(async () => {
     app = await createApp({
@@ -107,6 +108,8 @@ describe("api app", () => {
         JWT_EXPIRES_IN: "7d",
         JWT_SECRET: "this-is-a-test-secret",
         LOG_LEVEL: "silent",
+        NIDORALI_ADMIN_BEARER_TOKEN: "local-admin",
+        NIDORALI_SIMULATION_MODE: false,
         NODE_ENV: "test",
         PORT: 3001,
         RESEND_API_KEY: "resend-test",
@@ -196,7 +199,19 @@ describe("api app", () => {
     expect(formsResponse.statusCode).toBe(201);
   });
 
-  it("creates a checkout session", async () => {
+  it("creates a checkout session for an authenticated client", async () => {
+    const customerRegisterResponse = await app.inject({
+      method: "POST",
+      payload: {
+        display_name: "Kilfen",
+        email: "contact@demo.test",
+        password: "password123",
+      },
+      url: "/api/customer/register",
+    });
+
+    customerToken = customerRegisterResponse.json().data.token.accessToken;
+
     const payload: StripeCheckoutPayload = {
       app_name: "Club Démo",
       billing_email: "contact@demo.test",
@@ -207,6 +222,9 @@ describe("api app", () => {
     };
 
     const response = await app.inject({
+      headers: {
+        authorization: `Bearer ${customerToken}`,
+      },
       method: "POST",
       payload,
       url: "/api/billing/checkout-session",
@@ -214,6 +232,19 @@ describe("api app", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().data.url).toContain("checkout.stripe.com");
+  });
+
+  it("returns customer orders for the authenticated client", async () => {
+    const response = await app.inject({
+      headers: {
+        authorization: `Bearer ${customerToken}`,
+      },
+      method: "GET",
+      url: "/api/customer/orders",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(Array.isArray(response.json().data)).toBe(true);
   });
 
   it("exposes admin routes when the supabase token is valid", async () => {

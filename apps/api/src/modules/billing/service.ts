@@ -33,9 +33,10 @@ export async function createCheckoutSession(
       splash_bg_color: string;
     };
   },
+  customerAccountId: string,
 ) {
   if (fastify.env.NIDORALI_SIMULATION_MODE) {
-    const tenant = await fastify.dataRepository.createTenantFromCheckout(payload);
+    const tenant = await fastify.dataRepository.createTenantFromCheckout(payload, customerAccountId);
     const buildJob = await fastify.dataRepository.createBuildJob({
       platform: "both",
       tenant_id: tenant.id,
@@ -94,6 +95,7 @@ export async function createCheckoutSession(
       app_name: payload.app_name,
       billing_email: payload.billing_email,
       bundle_id: payload.bundle_id,
+      customer_account_id: customerAccountId,
       plan: payload.plan,
       slug: payload.slug,
       tenant_config_json: JSON.stringify(payload.tenant_config),
